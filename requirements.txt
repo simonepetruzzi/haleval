@@ -4,3 +4,6 @@ numpy
 transformer_lens
 huggingface_hub
 bitsandbytes
+wandb
+matplotlib
+seaborn

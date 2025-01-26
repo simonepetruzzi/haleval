@@ -1,9 +1,17 @@
 import torch as t
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+import wandb
 
+from utils.activation_hooks import register_activation_hooks
+from utils.logger import log_activations_wandb
+
+
+wandb.init(project="haleval")
+
+# Set device to GPU if available
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
-# Load the LLaMA 7B model and tokenizer from Hugging Face with 8-bit quantization
+# Load the model and tokenizer from Hugging Face
 model_name = "meta-llama/Llama-2-7b-hf"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
@@ -17,11 +25,15 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 #     device_map="auto"
 # )
 
+# Load the model with 16bit quantization (original is 32bit)
 model = AutoModelForCausalLM.from_pretrained(model_name).half().to(device)
 
 
 # Function to generate text based on a prompt
 def generate_text(prompt, max_length=500):
+
+    activations, handles = register_activation_hooks(model)
+
     inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
     generation_config = {
         "max_length": max_length,
@@ -30,9 +42,18 @@ def generate_text(prompt, max_length=500):
         "do_sample": True,
     }
     outputs = model.generate(**inputs, **generation_config)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    # Log activations to W&B
+    log_activations_wandb(activations)
 
-# Example usage
-prompt = "Once upon a time"
-generated_text = generate_text(prompt)
-print(generated_text)
+    for handle in handles:
+        handle.remove()
+
+    return generated_text, activations
+
+if __name__ == "__main__":
+    prompt = "Once upon a time"
+    generated_text, activations = generate_text(prompt)
+    print(generated_text)
+    wandb.finish()
