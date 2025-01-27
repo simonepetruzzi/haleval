@@ -1,39 +1,83 @@
+import torch
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+from typing import Dict, List
+from torch import Tensor
 
-def visualize_activations(activations, layer_name=None):
+from utils.activation_hooks import calculate_attention_activation_statistics, calculate_mlp_activation_statistics
+
+def plot_mlp_activation_statistics(activations: Dict[str, List[Tensor]], save_path: str = None):
     """
-    Visualize activations from a specific layer or all layers.
-    
+    Plot mean activation magnitudes for MLP layers.
+
     Args:
-        activations: Dictionary of layer activations from generate_text()
-        layer_name: Optional specific layer to visualize
+        activations: Dictionary containing activations for each layer.
+        save_path: Optional path to save the plot.
     """
-    if layer_name is not None and layer_name in activations:
-        # Visualize specific layer
-        layer_data = activations[layer_name][0].cpu().numpy()
-        plt.figure(figsize=(12, 6))
-        sns.heatmap(layer_data, cmap='viridis')
-        plt.title(f'Activations for layer: {layer_name}')
-        plt.xlabel('Neuron Index')
-        plt.ylabel('Sequence Position')
-        plt.tight_layout()
-        plt.savefig(f'activations_{layer_name}.png', dpi=300, bbox_inches='tight')
-    else:
-        # Visualize average activation magnitude across all layers
-        layer_means = []
-        layer_names = []
-        for name, acts in activations.items():
-            layer_means.append(acts[0].abs().mean().cpu().item())
-            layer_names.append(name)
-        
-        plt.figure(figsize=(15, 5))
-        plt.bar(range(len(layer_means)), layer_means)
-        plt.xticks(range(len(layer_means)), layer_names, rotation=45, ha='right')
-        plt.title('Average Activation Magnitude by Layer')
-        plt.xlabel('Layer Name')
-        plt.ylabel('Mean Activation')
-        plt.tight_layout()
-        plt.savefig('average_activation_magnitude.png', dpi=300, bbox_inches='tight')
-        
+    # Filter MLP activations
+    mlp_activations = {k: v for k, v in activations.items() if "mlp" in k}
+
+    # Calculate statistics
+    mlp_stats = calculate_mlp_activation_statistics(mlp_activations)
+
+    # Sort by layer order
+    sorted_mlp_stats = {k: mlp_stats[k] for k in sorted(mlp_stats.keys())}
+
+    # Prepare x and y for plotting
+    x = list(range(len(sorted_mlp_stats)))  # Numerical indices for layers
+    y = list(sorted_mlp_stats.values())    # Mean magnitudes
+    labels = list(sorted_mlp_stats.keys()) # Layer names
+
+    # Plot
+    plt.figure(figsize=(15, 6))
+    plt.plot(x, y, marker="o", linestyle="-", label="MLP Mean Activation Magnitude", color="salmon")
+    plt.xticks(ticks=x, labels=labels, rotation=45, ha="right", fontsize=8)
+    plt.xlabel("MLP Layers", fontsize=12)
+    plt.ylabel("Mean Activation Magnitude", fontsize=12)
+    plt.title("Mean Activation Magnitude for MLP Layers", fontsize=14)
+    plt.tight_layout()
+    plt.legend()
+
+    # Save the plot if a path is provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+    plt.show()
+
+
+def plot_attention_activation_statistics(activations: Dict[str, List[Tensor]], save_path: str = None):
+    """
+    Plot mean activation magnitudes for attention layers.
+
+    Args:
+        activations: Dictionary containing activations for each layer.
+        save_path: Optional path to save the plot.
+    """
+    # Filter attention activations
+    attention_activations = {k: v for k, v in activations.items() if "self_attn" in k}
+
+    # Calculate statistics
+    attention_stats = calculate_attention_activation_statistics(attention_activations)
+
+    # Sort by layer order
+    sorted_attention_stats = {k: attention_stats[k] for k in sorted(attention_stats.keys())}
+
+    # Prepare x and y for plotting
+    x = list(range(len(sorted_attention_stats)))  # Numerical indices for layers
+    y = list(sorted_attention_stats.values())    # Mean magnitudes
+    labels = list(sorted_attention_stats.keys()) # Layer names
+
+    # Plot
+    plt.figure(figsize=(15, 6))
+    plt.plot(x, y, marker="o", linestyle="-", label="Attention Mean Activation Magnitude", color="skyblue")
+    plt.xticks(ticks=x, labels=labels, rotation=45, ha="right", fontsize=8)
+    plt.xlabel("Attention Layers", fontsize=12)
+    plt.ylabel("Mean Activation Magnitude", fontsize=12)
+    plt.title("Mean Activation Magnitude for Attention Layers", fontsize=14)
+    plt.tight_layout()
+    plt.legend()
+
+    # Save the plot if a path is provided
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+    plt.show()
+

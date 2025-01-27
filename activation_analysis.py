@@ -4,8 +4,11 @@ import wandb
 
 from utils.activation_hooks import register_activation_hooks
 from utils.logger import log_activations_wandb
+from utils.visualize import plot_mlp_activation_statistics, plot_attention_activation_statistics
 
+attention_save_path = "/images/attention_activations"
 
+# Initialize W&B
 wandb.init(project="haleval")
 
 # Set device to GPU if available
@@ -45,15 +48,21 @@ def generate_text(prompt, max_length=500):
     generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     
     # Log activations to W&B
-    log_activations_wandb(activations)
+    # log_activations_wandb(activations)
 
+    # Visualize activations
+    plot_mlp_activation_statistics(activations, './images/mlp_activations')
+    plot_attention_activation_statistics(activations, './images/attention_activations')
+    
     for handle in handles:
         handle.remove()
 
-    return generated_text, activations
+    return generated_text
 
 if __name__ == "__main__":
     prompt = "Once upon a time"
     generated_text, activations = generate_text(prompt)
     print(generated_text)
+    for name, module in model.named_modules():
+        print(name)
     wandb.finish()
