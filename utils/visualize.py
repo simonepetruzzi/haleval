@@ -6,6 +6,16 @@ from torch import Tensor
 
 from utils.activation_hooks import calculate_attention_activation_statistics, calculate_mlp_activation_statistics
 
+def layer_name_to_index(name):
+    """Extract layer number from name like 'model.layers.11.mlp'"""
+    try:
+        # Find the number between 'layers.' and the next dot
+        layer_num = int(name.split('layers.')[1].split('.')[0])
+        return layer_num
+    except:
+        return float('inf')
+
+
 def plot_mlp_activation_statistics(activations: Dict[str, List[Tensor]], save_path: str = None):
     """
     Plot mean activation magnitudes for MLP layers.
@@ -21,8 +31,9 @@ def plot_mlp_activation_statistics(activations: Dict[str, List[Tensor]], save_pa
     mlp_stats = calculate_mlp_activation_statistics(mlp_activations)
 
     # Sort by layer order
-    sorted_mlp_stats = {k: mlp_stats[k] for k in sorted(mlp_stats.keys())}
-
+    #sorted_mlp_stats = {k: mlp_stats[k] for k in sorted(mlp_stats.keys())}
+    sorted_mlp_stats = {k: mlp_stats[k] for k in sorted(mlp_stats.keys(), 
+                                                   key=layer_name_to_index)}
     # Prepare x and y for plotting
     x = list(range(len(sorted_mlp_stats)))  # Numerical indices for layers
     y = list(sorted_mlp_stats.values())    # Mean magnitudes
@@ -59,8 +70,9 @@ def plot_attention_activation_statistics(activations: Dict[str, List[Tensor]], s
     attention_stats = calculate_attention_activation_statistics(attention_activations)
 
     # Sort by layer order
-    sorted_attention_stats = {k: attention_stats[k] for k in sorted(attention_stats.keys())}
-
+    #sorted_attention_stats = {k: attention_stats[k] for k in sorted(attention_stats.keys())}
+    sorted_attention_stats = {k: attention_stats[k] for k in sorted(attention_stats.keys(),
+                                                              key=layer_name_to_index)}
     # Prepare x and y for plotting
     x = list(range(len(sorted_attention_stats)))  # Numerical indices for layers
     y = list(sorted_attention_stats.values())    # Mean magnitudes

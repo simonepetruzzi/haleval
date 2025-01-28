@@ -37,7 +37,7 @@ def generate_text(prompt, max_length=500):
 
     activations, handles = register_activation_hooks(model)
 
-    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
     generation_config = {
         "max_length": max_length,
         "temperature": 0.7,
@@ -61,8 +61,6 @@ def generate_text(prompt, max_length=500):
 
 if __name__ == "__main__":
     prompt = "Once upon a time"
-    generated_text, activations = generate_text(prompt)
-    print(generated_text)
-    for name, module in model.named_modules():
-        print(name)
+    generated_text = generate_text(prompt)
+    print(generated_text) 
     wandb.finish()

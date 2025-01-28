@@ -48,46 +48,32 @@ def register_activation_hooks(model: torch.nn.Module) -> tuple[Dict[str, List[to
 
 
 def calculate_mlp_activation_statistics(activations: Dict[str, List[Tensor]]) -> Dict[str, float]:
-    """
-    Calculate mean activation magnitudes for MLP layers.
-
-    Args:
-        activations: Dictionary containing activations for each layer.
-
-    Returns:
-        Dictionary mapping MLP layer names to their mean activation magnitudes.
-    """
     mlp_stats = {}
     for layer_name, tensors in activations.items():
-        if "mlp" in layer_name:  # Filter MLP layers
+        if "mlp" in layer_name:
             try:
-                # Concatenate all activations for the layer and compute the mean magnitude
-                concatenated_activations = torch.cat(tensors, dim=0)
-                mean_magnitude = concatenated_activations.abs().mean().item()
+                # Take mean across sequence length dimension for each tensor
+                means = [t.mean(dim=1) for t in tensors]  # Results in shape [1, 4096] for each tensor
+                # Stack the means
+                stacked_means = torch.stack(means, dim=0)  # Shape: [num_steps, 1, 4096]
+                mean_magnitude = stacked_means.abs().mean().item()
                 mlp_stats[layer_name] = mean_magnitude
             except RuntimeError as e:
-                print(f"Skipping MLP layer {layer_name} due to mismatched tensor sizes: {e}")
+                print(f"Error processing MLP layer {layer_name}: {e}")
     return mlp_stats
 
-
 def calculate_attention_activation_statistics(activations: Dict[str, List[Tensor]]) -> Dict[str, float]:
-    """
-    Calculate mean activation magnitudes for attention layers.
-
-    Args:
-        activations: Dictionary containing activations for each layer.
-
-    Returns:
-        Dictionary mapping attention layer names to their mean activation magnitudes.
-    """
     attention_stats = {}
     for layer_name, tensors in activations.items():
-        if "self_attn" in layer_name:  # Filter attention layers
+        if "self_attn" in layer_name:
             try:
-                # Concatenate all activations for the layer and compute the mean magnitude
-                concatenated_activations = torch.cat(tensors, dim=0)
-                mean_magnitude = concatenated_activations.abs().mean().item()
+                # Take mean across sequence length dimension for each tensor 
+                means = [t.mean(dim=1) for t in tensors]  # Results in shape [1, 4096] for each tensor
+                # Stack the means
+                stacked_means = torch.stack(means, dim=0)  # Shape: [num_steps, 1, 4096]
+                mean_magnitude = stacked_means.abs().mean().item()
                 attention_stats[layer_name] = mean_magnitude
             except RuntimeError as e:
-                print(f"Skipping attention layer {layer_name} due to mismatched tensor sizes: {e}")
+                print(f"Error processing attention layer {layer_name}: {e}")
     return attention_stats
+
