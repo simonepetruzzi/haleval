@@ -35,12 +35,11 @@ model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
 #     device_map="auto"
 # )
 
-# Import dataset
-def generate_responses_for_truthfulqa(model, tokenizer, device, output_csv="truthfulqa_responses.csv", split="validation"):
+def generate_responses_for_truthfulqa(model, tokenizer, device, output_csv="truthfulqa_responses_corrected.csv", split="validation"):
     """
     Load the TruthfulQA dataset, iterate over each question in the specified split,
     generate model outputs, and save the results to a CSV file.
-
+    
     Args:
         model: The transformer model to use for generation (already loaded).
         tokenizer: The tokenizer corresponding to the model.
@@ -48,34 +47,35 @@ def generate_responses_for_truthfulqa(model, tokenizer, device, output_csv="trut
         output_csv (str): Path of the CSV file where results will be saved.
         split (str): Which dataset split to use (e.g. "train", "validation", "test").
     """
-    # 1) Load the dataset
-    #    - We'll use the 'generation' configuration of TruthfulQA,
-    #      which includes the free-form questions.
-    ds_split = load_dataset("truthful_qa", "generation")
+    # Load the dataset
+    ds_split = load_dataset("truthful_qa", "generation")[split]
     
-    # 2) Select the split (e.g. validation)
-    questions = ds_split[split]
-
-    # 3) Prepare CSV writer
-    fieldnames = ["idx", "question", "model_response"]
+    # Prepare CSV writer
+    fieldnames = ["idx", "question", "best_answer", "correct_answers", "incorrect_answers", "model_response"]
     with open(output_csv, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
-        # 4) Loop over the dataset examples
-        for idx, question in enumerate(questions[:10]):
+        # Iterate over the dataset
+        for idx, example in enumerate(ds_split):
+            question = example["question"]
+            best_answer = example["best_answer"]
+            correct_answers = " | ".join(example["correct_answers"]) if isinstance(example["correct_answers"], list) else example["correct_answers"]
+            incorrect_answers = " | ".join(example["incorrect_answers"]) if isinstance(example["incorrect_answers"], list) else example["incorrect_answers"]
             
-            # 5) Generate response using your existing function
-            #    (make sure generate_text is already defined and uses the correct model, tokenizer, device)
+            # Generate response
             model_answer = generate_text(question)
-
-            # 6) Save to CSV
+            
+            # Save to CSV
             writer.writerow({
                 "idx": idx,
                 "question": question,
+                "best_answer": best_answer,
+                "correct_answers": correct_answers,
+                "incorrect_answers": incorrect_answers,
                 "model_response": model_answer
             })
-
+    
     print(f"Finished generating responses. Results saved to {output_csv}.")
 
 # Function to generate text based on a prompt
