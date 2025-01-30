@@ -7,3 +7,4 @@ bitsandbytes
 wandb
 matplotlib
 seaborn
+scikit-learn
