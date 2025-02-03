@@ -39,21 +39,3 @@ class TruthfulQAMultiChoiceDataset(Dataset):
 
         return {"prompt": prompt, "correct_answer": correct_answer}
 
-def get_truthfulqa_dataloader(tokenizer, split="test", max_length=512, batch_size=8, shuffle=True, num_workers=0):
-    """
-    Creates and returns a DataLoader for the TruthfulQAMultiChoiceDataset.
-
-    Args:
-        tokenizer: A Hugging Face tokenizer.
-        split (str): Which dataset split to use ("test", "train", or "validation").
-        max_length (int): Maximum token length for the prompt.
-        batch_size (int): How many samples per batch to load.
-        shuffle (bool): Whether to shuffle the data at every epoch.
-        num_workers (int): Number of subprocesses to use for data loading.
-
-    Returns:
-        DataLoader.
-    """
-    dataset = TruthfulQAMultiChoiceDataset(tokenizer, split=split, max_length=max_length)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
-    return dataloader

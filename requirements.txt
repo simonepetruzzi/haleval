@@ -8,3 +8,4 @@ wandb
 matplotlib
 seaborn
 scikit-learn
+hydra-core

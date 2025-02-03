@@ -4,23 +4,12 @@ import os
 import pandas as pd
 from tqdm import tqdm
 import torch
-from spare.utils import load_model, PROJ_DIR
-from spare.datasets.eval_datasets_nqswap import NQSwap
-from spare.datasets.eval_datasets_macnoise import MACNoise
-from spare.patch_utils import InspectOutputContext
-from spare.analysis.group_instance import get_nqswap_compositions, get_macnoise_compositions
+from utils.tools import load_model
+from datasets.truthfulQA_mq import TruthfulQAMultiChoiceDataset
+from utils.patch_utils import InspectOutput
 import seaborn as sns
 from matplotlib import pyplot as plt
 from pylab import rcParams
-
-rcParams.update({'text.usetex': True, })
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s %(name)s %(lineno)s: %(message)s",
-    datefmt="%m/%d/%Y %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
-logger.setLevel(level=logging.INFO)
 
 
 def kurtosis(x, dim=-1):

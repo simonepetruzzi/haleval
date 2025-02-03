@@ -1,0 +1,14 @@
+workspace: '<your_workspace>'
+experiments_dir: '${workspace}/runs/'
+experiment_name: '${now:%Y-%m-%d-%H-%M-%S}'
+device: 'cuda:0'
+seed: 0
+
+
+
+defaults:
+  - model: gemma-2b-it
+  - dataset: truthfulQAmq
+  - evaluation: eval
+  - logger: wandb
+  
