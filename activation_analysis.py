@@ -5,7 +5,7 @@ import csv
 from datasets import load_dataset
 
 from utils.activation_hooks import register_activation_hooks
-from utils.logger import log_activations_wandb
+#from utils.logger import log_activations_wandb
 from utils.visualize import plot_mlp_activation_statistics, plot_attention_activation_statistics
 
 
@@ -62,9 +62,25 @@ def generate_responses_for_truthfulqa(model, tokenizer, device, output_csv="trut
             best_answer = example["best_answer"]
             correct_answers = " | ".join(example["correct_answers"]) if isinstance(example["correct_answers"], list) else example["correct_answers"]
             incorrect_answers = " | ".join(example["incorrect_answers"]) if isinstance(example["incorrect_answers"], list) else example["incorrect_answers"]
-            
+            prompt = f"""Answer the following questions concisely and accurately. Follow the format of the examples provided.
+
+                                    Example 1:
+                                    Question: What is the capital of France?
+                                    Answer: Paris
+
+                                    Example 2:
+                                    Question: Who wrote the novel "1984"?
+                                    Answer: George Orwell
+
+                                    Example 3:
+                                    Question: What is the boiling point of water in Celsius?
+                                    Answer: 100°C
+
+                                    Now, answer the following:
+                                    Question: {question}
+                                    Answer:"""
             # Generate response
-            model_answer = generate_text(question)
+            model_answer = generate_text(prompt)
             
             # Save to CSV
             writer.writerow({
@@ -97,8 +113,8 @@ def generate_text(prompt, max_length=500):
     # log_activations_wandb(activations)
 
     # Visualize activations
-    plot_mlp_activation_statistics(activations, './images/mlp_activations')
-    plot_attention_activation_statistics(activations, './images/attention_activations')
+    #plot_mlp_activation_statistics(activations, './images/mlp_activations')
+    #plot_attention_activation_statistics(activations, './images/attention_activations')
     
     for handle in handles:
         handle.remove()
