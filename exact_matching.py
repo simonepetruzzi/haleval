@@ -1,6 +1,7 @@
 import string
 import csv
 import re
+import difflib
 
 def normalize_text(s: str) -> str:
     # Strip text
@@ -56,6 +57,16 @@ def is_prefix_answer(model_answer: str, correct_answers: list[str]) -> bool:
         if model_answer.startswith(ans):
             return True
     return False
+
+def is_fuzzy_match(model_answer: str, candidate: str, threshold: float = 0.7) -> bool:
+    """
+    Returns True if the fuzzy similarity ratio between the model answer
+    and the candidate answer is above the given threshold.
+
+    The ratio is computed using difflib.SequenceMatcher, which provides a value between 0 and 1.
+    """
+    similarity_ratio = difflib.SequenceMatcher(None, model_answer, candidate).ratio()
+    return similarity_ratio >= threshold
 
 
 
@@ -121,8 +132,9 @@ def evaluate_csv(
             exact_answer = is_exact_answer(extracted_answer, correct_answers_list)
             substring_match = is_substring_answer(extracted_answer, correct_answers_list)
             prefix_match = is_prefix_answer(extracted_answer, correct_answers_list)
+            fuzzy_match = any(is_fuzzy_match(extracted_answer, candidate) for candidate in correct_answers_list)
 
-            if exact_answer or substring_match or prefix_match:
+            if exact_answer or substring_match or prefix_match or fuzzy_match:
                 hallucinated = "false"
             else:
                 hallucinated = "true"
