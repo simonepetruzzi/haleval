@@ -58,7 +58,7 @@ def is_prefix_answer(model_answer: str, correct_answers: list[str]) -> bool:
             return True
     return False
 
-def is_fuzzy_match(model_answer: str, candidate: str, threshold: float = 0.7) -> bool:
+def is_fuzzy_match(model_answer: str, candidate: str, threshold: float = 0.9) -> bool:
     """
     Returns True if the fuzzy similarity ratio between the model answer
     and the candidate answer is above the given threshold.

@@ -100,7 +100,7 @@ from datasets import load_dataset
 
 def generate_responses_for_truthfulqa(model, tokenizer, device, output_csv="truthfulqa_responses_corrected.csv", split="validation"):
     """
-    Load the TruthfulQA dataset, iterate over each question in the specified split,
+    Load the TruthfulQA dataset, iterate over each question,
     generate model outputs, and save the results to a CSV file.
     
     Args:
