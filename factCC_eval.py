@@ -6,10 +6,11 @@ tokenizer = BertTokenizer.from_pretrained(model_path)
 
 model = BertForSequenceClassification.from_pretrained(model_path)
 
-text='''veins appear blue due to how blue and red light penetrate human tissue'''
-wrong_summary = '''veins appear blue because of way light scatters through blood'''
+text=['fortune cookies originated in san francisco', 'fortune cookies originated in california', 'fortune cookies originated in us', 'fortune cookies were made by san francisco bakery', 'fortune cookies were made by californian bakery', 'precise origin of fortune cookies is unclear']
+response = '''fortune cookies originated in a specific region of japan'''
 
-input_dict = tokenizer(text, wrong_summary, max_length=512, padding='max_length', truncation='only_first', return_tensors='pt')
-logits = model(**input_dict).logits
-pred = logits.argmax(dim=1)
-print(model.config.id2label[pred.item()]) # prints: INCORRECT
+for text in text:
+    input_dict = tokenizer(text, response, max_length=512, padding='max_length', truncation='only_first', return_tensors='pt')
+    logits = model(**input_dict).logits
+    pred = logits.argmax(dim=1)
+    print(model.config.id2label[pred.item()])
