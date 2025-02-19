@@ -155,36 +155,95 @@ Answer:"""
     print(f"Finished generating responses. Results saved to {output_csv}.")
 
 
-# Function to generate text based on a prompt
-def generate_text(prompt, max_length=500):
+def generate_responses_for_popqa(model, tokenizer, device, output_csv="gemma2b_popqa_responses.csv"):
+    """
+    Load the PopQA dataset, iterate over each question,
+    generate model outputs, and save the results to a CSV file.
+    
+    Args:
+        model: The transformer model to use for generation (already loaded).
+        tokenizer: The tokenizer corresponding to the model.
+        device: The torch.device to run inference on (CPU or GPU).
+        output_csv (str): Path of the CSV file where results will be saved.
+        split (str): Which dataset split to use (e.g. "train", "validation", "test").
+    """
+    # Load the dataset
+    ds_split = load_dataset("akariasai/PopQA")['test'] 
+    print(type(ds_split))  # Check if it's a dataset object
+    print(ds_split[0])  # Print the first example
+    
+    # Prepare CSV writer
+    fieldnames = ["idx", "question", "possible_answers", "model_response"]
+    with open(output_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
 
+        for idx, example in enumerate(ds_split):
+            question = example["question"]
+            possible_answers = " | ".join(example["possible_answers"]) if isinstance(example["possible_answers"], list) else example["possible_answers"]
+            # Select three random examples from the dataset
+            examples = random.sample(list(ds_split), 10)
+            example_texts = "\n\n".join(
+                [
+                    f"Example {i+1}:\nQuestion: {ex['question']}\nAnswer: {ex['possible_answers'].split(' | ')[0]}"
+                    if isinstance(ex["possible_answers"], str)
+                    else f"Example {i+1}:\nQuestion: {ex['question']}\nAnswer: {ex['possible_answers'][0]}"
+                    for i, ex in enumerate(examples)
+                ]
+            )   
+            
+            prompt = f"""Answer the following questions concisely and accurately, using no more than one sentence. Follow the format of the examples provided.
+            
+            {example_texts}
+                        
+            Now, answer the following:
+            Question: {question}
+            Answer:"""
+            
+            # Generate response
+            model_answer = generate_text(prompt)
+            
+            # Save to CSV
+            writer.writerow({
+                "idx": idx,
+                "question": question,
+                "possible_answers": possible_answers,
+                "model_response": model_answer
+            })
+    
+    print(f"Finished generating responses. Results saved to {output_csv}.")
+
+# Function to generate text based on a prompt
+def generate_text(prompt, max_length=10000):
     activations, handles = register_activation_hooks(model)
 
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     generation_config = {
         "max_length": max_length,
-        "temperature": 0.7,
+        "temperature": 0.2,
         "top_p": 0.9,
         "do_sample": True,
+        "return_dict_in_generate": True,
+        "output_scores": True
     }
-    outputs = model.generate(**inputs, **generation_config)
-    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
-    # Log activations to W&B
-    # log_activations_wandb(activations)
 
-    # Visualize activations
-    #plot_mlp_activation_statistics(activations, './images/mlp_activations')
-    #plot_attention_activation_statistics(activations, './images/attention_activations')
-    
+    output_sequences = model.generate(**inputs, **generation_config)
+    generated_ids = output_sequences.sequences[0]
+
+    # Identify the input token length to remove the prompt from the output
+    input_length = inputs.input_ids.shape[1]
+    generated_text = tokenizer.decode(generated_ids[input_length:], skip_special_tokens=True)
+
     for handle in handles:
         handle.remove()
 
     return generated_text
 
+
 if __name__ == "__main__":
     #prompt = "Who actually said, 'Let them eat cake' ?"
     #generated_text = generate_text(prompt)
     #print(generated_text)
-    generate_responses_for_truthfulqa(model, tokenizer, device, output_csv="truthfulqa_responses.csv", split="validation") 
+    #generate_responses_for_truthfulqa(model, tokenizer, device, output_csv="gemma2_truthfulqa_responses.csv", split="validation") 
+    generate_responses_for_popqa(model, tokenizer, device, output_csv="gemma2b_popqa_responses.csv")
     wandb.finish()

@@ -42,7 +42,6 @@ def main(cfg: DictConfig):
     
     num_layer = cfg.model.layers
     
-    
     # Evaluation loop
 
 
