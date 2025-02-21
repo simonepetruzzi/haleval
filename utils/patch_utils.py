@@ -71,3 +71,14 @@ def inspect_output(module: nn.Module, catcher: dict, module_name, move_to_cpu, l
                             last_position=last_position)
     handle = module.register_forward_hook(hook_instance)
     return handle
+
+def parse_layer_idx(module_name: str) -> int:
+    """
+    Parse the layer index from a module name.
+    Expected formats: "model.layers.{layer_idx}" or "model.layers.{layer_idx}.<submodule>".
+    """
+    try:
+        parts = module_name.split('.')
+        return int(parts[2])
+    except Exception as e:
+        raise ValueError(f"Cannot parse layer index from module name: {module_name}") from e

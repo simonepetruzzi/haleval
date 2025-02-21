@@ -169,9 +169,7 @@ def generate_responses_for_popqa(model, tokenizer, device, output_csv="gemma2b_p
     """
     # Load the dataset
     ds_split = load_dataset("akariasai/PopQA")['test'] 
-    print(type(ds_split))  # Check if it's a dataset object
-    print(ds_split[0])  # Print the first example
-    
+
     # Prepare CSV writer
     fieldnames = ["idx", "question", "possible_answers", "model_response"]
     with open(output_csv, "w", newline="", encoding="utf-8") as f:
