@@ -175,7 +175,7 @@ def generate_responses_for_popqa(model, tokenizer, device, output_csv="gemma2b_p
     with open(output_csv, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-
+        prompts = []
         for idx, example in enumerate(ds_split):
             question = example["question"]
             possible_answers = " | ".join(example["possible_answers"]) if isinstance(example["possible_answers"], list) else example["possible_answers"]
@@ -197,6 +197,7 @@ def generate_responses_for_popqa(model, tokenizer, device, output_csv="gemma2b_p
             Now, answer the following:
             Question: {question}
             Answer:"""
+            prompts.append(prompt)
             
             # Generate response
             model_answer = generate_text(prompt)
@@ -210,6 +211,107 @@ def generate_responses_for_popqa(model, tokenizer, device, output_csv="gemma2b_p
             })
     
     print(f"Finished generating responses. Results saved to {output_csv}.")
+
+def generate_responses_for_popqa_batch(model, tokenizer, device, output_csv="gemma2b_popqa_responses.csv"):
+    """
+    Load the PopQA dataset, iterate over each question,
+    generate model outputs, and save the results to a CSV file.
+    
+    Args:
+        model: The transformer model to use for generation (already loaded).
+        tokenizer: The tokenizer corresponding to the model.
+        device: The torch.device to run inference on (CPU or GPU).
+        output_csv (str): Path of the CSV file where results will be saved.
+        split (str): Which dataset split to use (e.g. "train", "validation", "test").
+    """
+    # Load the dataset
+    ds_split = load_dataset("akariasai/PopQA")['test'] 
+
+    # Prepare CSV writer
+    fieldnames = ["idx", "question", "possible_answers", "model_response"]
+    with open(output_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        prompts = []
+        metadata = []
+    for idx, example in enumerate(ds_split):
+        question = example["question"]
+        possible_answers = (
+            " | ".join(example["possible_answers"]) 
+            if isinstance(example["possible_answers"], list) 
+            else example["possible_answers"]
+        )
+        # Select 10 random examples from the dataset for context
+        examples = random.sample(list(ds_split), 10)
+        example_texts = "\n\n".join(
+            [
+                f"Example {i+1}:\nQuestion: {ex['question']}\nAnswer: {ex['possible_answers'].split(' | ')[0]}"
+                if isinstance(ex["possible_answers"], str)
+                else f"Example {i+1}:\nQuestion: {ex['question']}\nAnswer: {ex['possible_answers'][0]}"
+                for i, ex in enumerate(examples)
+            ]
+        )
+
+        prompt = f"""Answer the following questions concisely and accurately, using no more than one sentence. Follow the format of the examples provided.
+
+    {example_texts}
+
+    Now, answer the following:
+    Question: {question}
+    Answer:"""
+        prompts.append((idx, question, possible_answers, prompt))
+        metadata.append((idx, question, possible_answers))
+
+    # Step 2: Batch generate responses
+    # Assuming generate_text_batch is a function that accepts a list of prompts and returns a list of responses
+    model_answers = generate_text([p[3] for p in prompts])
+
+    # Step 3: Save results to CSV
+    for (idx, question, possible_answers, _), model_answer in zip(prompts, model_answers):
+        writer.writerow({
+            "idx": idx,
+            "question": question,
+            "possible_answers": possible_answers,
+            "model_response": model_answer
+        })
+
+def generate_text_batch(prompts, max_length=10000):
+    # Register hooks (if needed) for the batch generation
+    activations, handles = register_activation_hooks(model)
+
+    # Tokenize prompts as a batch with padding
+    inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(device)
+
+    # Set up generation configuration
+    generation_config = {
+        "max_length": max_length,
+        "temperature": 0.2,
+        "top_p": 0.9,
+        "do_sample": True,
+        "return_dict_in_generate": True,
+        "output_scores": True
+    }
+
+    # Generate output sequences for the entire batch
+    output_sequences = model.generate(**inputs, **generation_config)
+    batch_generated_texts = []
+
+    # Iterate over each prompt to remove its original input text from the output
+    for i, prompt in enumerate(prompts):
+        # Tokenize each prompt separately to get its actual length (without padding)
+        prompt_tokens = tokenizer(prompt, return_tensors="pt").to(device)
+        input_length = prompt_tokens.input_ids.shape[1]
+
+        generated_ids = output_sequences.sequences[i]
+        # Decode the generated text, excluding the original prompt tokens
+        generated_text = tokenizer.decode(generated_ids[input_length:], skip_special_tokens=True)
+        batch_generated_texts.append(generated_text)
+
+    # Remove hooks after generation
+    for handle in handles:
+        handle.remove()
+
+    return batch_generated_texts
 
 # Function to generate text based on a prompt
 def generate_text(prompt, max_length=10000):
