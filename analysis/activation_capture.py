@@ -3,11 +3,19 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import torch                      
 from torch.utils.data import DataLoader
-from utils.tools import load_model                               
-from datasets.truthfulQAmq import TruthfulQAMultiChoiceDataset   
-from utils.patch_utils import InspectOutput, parse_layer_idx                      
+import sys
+from pathlib import Path
 
-@hydra.main(config_path="configs", config_name="config")
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from utils.tools import load_model, generate_text_batch, save_answers_csv                                 
+from dataset.popQA import PopQADataset
+from utils.patch_utils import InspectOutput, parse_layer_idx      
+from utils.tools import generate_responses_for_popqa_batch                  
+
+
+@torch.inference_mode()
+@hydra.main(config_path="../configs", config_name="config")
 def main(cfg: DictConfig):
 
     # Experiment setup
@@ -18,15 +26,15 @@ def main(cfg: DictConfig):
     model, tokenizer = load_model(cfg.model.model_name, use_flash_attention=cfg.model.use_flash_attention, device=cfg.device)
 
     # Load the dataset and data loader
-    dataset = TruthfulQAMultiChoiceDataset(tokenizer, split=cfg.dataset.split, max_length=cfg.dataset.max_length)
+    if cfg.dataset.dataset_name == "popQA":
+        dataset = PopQADataset(tokenizer, split=cfg.dataset.split, max_length=cfg.dataset.max_length)
 
-    # Create a DataLoader
-    eval_dataloader = DataLoader(dataset, batch_size=cfg.dataset.batch_size, shuffle=cfg.dataset.shuffle, num_workers=cfg.dataset.num_workers)
+    dataloader = DataLoader(dataset, batch_size=cfg.dataset.batch_size, num_workers=cfg.dataset.num_workers)
 
     # Set up directory to save data
-    model_name = model_name.split("/")[-1]
+    model_name = cfg.model.model_name.split("/")[-1]
     data_name = cfg.dataset.dataset_name
-    save_dir =  "cached_data" / model_name / data_name
+    save_dir = Path("cached_data") / model_name / data_name
     
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -46,36 +54,24 @@ def main(cfg: DictConfig):
         module_names.append(f"model.layers.{idx}.self_attn")
         module_names.append(f"model.layers.{idx}.mlp")
     
-    # Evaluation loop
-    model.eval()
+    for batch in dataloader:
+        # Extract the list of prompt strings from the batch
+        prompts = batch["prompt"]
+        metadata = batch["metadata"]
 
-    move_to_cpu = cfg.get("move_to_cpu", True)
-    last_position = cfg.get("last_position", True)
-
-    for batch_idx, batch in enumerate(eval_dataloader):
+        for i in range(0, len(prompts), 10):
+            chunk_prompts = prompts[i:i+10]
+            print (chunk_prompts)
+            chunk_metadata = {key: value[i:i+10] for key, value in metadata.items()}
+            print(chunk_metadata)
+            # Generate responses for this chunk
+            model_answers = generate_text_batch(model, tokenizer, chunk_prompts, max_new_tokens=100, batch_size=cfg.dataset.batch_size)
+            print (model_answers)
+            save_answers_csv(chunk_metadata, model_answers, output = "gemma2b_popqa_responses.csv")
+            
         
-        input_ids = batch["input_ids"].to(cfg.device)
-
-        with torch.no_grad():
-            with InspectOutput(model, module_names, move_to_cpu=move_to_cpu, last_position=last_position) as inspector:
-                _ = model(input_ids=input_ids)
-
-        # Process captured activations from each module
-        for module, activation in inspector.catcher.items():
-            # If last_position is True, activation shape is likely [batch_size, hidden_dim]
-            # We extract the activation for the first example in the batch as an example
-            activation_extracted = activation[0].cpu() 
-            # Parse the layer index for clarity in naming/logging
-            try:
-                layer_idx = parse_layer_idx(module)
-            except ValueError:
-                layer_idx = "unknown"
-
-            # Construct a filename encoding the module name and batch index
-            filename = f"{module.replace('.', '_')}_batch{batch_idx}.pt"
-            file_path = os.path.join(save_dir, filename)
-            torch.save(activation_extracted, file_path)
-            print(f"Saved activation for module '{module}' (layer {layer_idx}) from batch {batch_idx} to {file_path}")
-
-
+        
     
+    
+if __name__ == '__main__':
+    main()
