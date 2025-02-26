@@ -8,7 +8,7 @@ seed: 0
 
 defaults:
   - model: gemma-2b
-  - dataset: truthfulQAmq
+  - dataset: popQA
   - evaluation: eval
   - logger: wandb
   

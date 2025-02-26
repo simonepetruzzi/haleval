@@ -1,4 +1,4 @@
-model_name: "/google/gemma-2b-it"
+model_name: "google/gemma-2b-it"
 use_flash_attention: True
 device: "cuda"
 torch_dtype: "float16"  # You might need to convert this in code
