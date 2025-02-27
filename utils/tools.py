@@ -146,10 +146,27 @@ def generate_text_batch(model,tokenizer,prompts, max_new_tokens, batch_size, dev
             
     return generated_texts
 
+# def save_answers_csv(metadata, model_answers, output):
+#     with open(output, "w", newline="", encoding="utf-8") as f:
+#         writer = csv.DictWriter(f, fieldnames=["idx", "question", "possible_answers", "model_response"])
+#         writer.writeheader()
+#         for idx, question, possible_answers, model_answer in zip(
+#             metadata["idx"], metadata["question"], metadata["possible_answers"], model_answers
+#         ):
+#             writer.writerow({
+#                 "idx": idx,
+#                 "question": question,
+#                 "possible_answers": possible_answers,
+#                 "model_response": model_answer
+#             })
+#     torch.cuda.empty_cache()    
+
 def save_answers_csv(metadata, model_answers, output):
-    with open(output, "w", newline="", encoding="utf-8") as f:
+    file_exists = os.path.exists(output)
+    with open(output, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["idx", "question", "possible_answers", "model_response"])
-        writer.writeheader()
+        if not file_exists:
+            writer.writeheader()
         for idx, question, possible_answers, model_answer in zip(
             metadata["idx"], metadata["question"], metadata["possible_answers"], model_answers
         ):
@@ -159,20 +176,4 @@ def save_answers_csv(metadata, model_answers, output):
                 "possible_answers": possible_answers,
                 "model_response": model_answer
             })
-    torch.cuda.empty_cache()    
-
-# def save_answers_csv(metadata, model_answers, output):
-#     """
-#     Save the responses to a CSV file.
-#     """
-#     with open(output, "w", newline="", encoding="utf-8") as f:
-#         writer = csv.DictWriter(f, fieldnames=["idx", "question", "possible_answers", "model_response"])
-#         writer.writeheader()
-#         for (idx, question, possible_answers), model_answer in zip(metadata, model_answers):
-#             writer.writerow({
-#                 "idx": idx,
-#                 "question": question,
-#                 "possible_answers": possible_answers,
-#                 "model_response": model_answer
-#             })
-#     torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
