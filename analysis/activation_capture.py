@@ -61,12 +61,11 @@ def main(cfg: DictConfig):
 
         for i in range(0, len(prompts), 10):
             chunk_prompts = prompts[i:i+10]
-            print (chunk_prompts)
+            
             chunk_metadata = {key: value[i:i+10] for key, value in metadata.items()}
-            print(chunk_metadata)
-            # Generate responses for this chunk
+            
             model_answers = generate_text_batch(model, tokenizer, chunk_prompts, max_new_tokens=100, batch_size=cfg.dataset.batch_size)
-            print (model_answers)
+            
             save_answers_csv(chunk_metadata, model_answers, output = "gemma2b_popqa_responses.csv")
             
         
