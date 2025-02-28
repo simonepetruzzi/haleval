@@ -30,7 +30,7 @@ def main(cfg: DictConfig):
         dataset = PopQADataset(tokenizer, split=cfg.dataset.split, max_length=cfg.dataset.max_length)
 
     dataloader = DataLoader(dataset, batch_size=cfg.dataset.batch_size, num_workers=cfg.dataset.num_workers)
-
+    
     # Set up directory to save data
     model_name = cfg.model.model_name.split("/")[-1]
     data_name = cfg.dataset.dataset_name
@@ -53,22 +53,15 @@ def main(cfg: DictConfig):
         module_names.append(f"model.layers.{idx}")
         module_names.append(f"model.layers.{idx}.self_attn")
         module_names.append(f"model.layers.{idx}.mlp")
-    
+
+    model.eval()
     for batch in dataloader:
         # Extract the list of prompt strings from the batch
         prompts = batch["prompt"]
         metadata = batch["metadata"]
-
-        for i in range(0, len(prompts), 10):
-            chunk_prompts = prompts[i:i+10]
-            
-            chunk_metadata = {key: value[i:i+10] for key, value in metadata.items()}
-            
-            model_answers = generate_text_batch(model, tokenizer, chunk_prompts, max_new_tokens=100, batch_size=cfg.dataset.batch_size)
-            
-            save_answers_csv(chunk_metadata, model_answers, output = "gemma2b_popqa_responses.csv")
-            
-        
+        model_answers = generate_text_batch(model, tokenizer, prompts, max_length=30) 
+        save_answers_csv(metadata, model_answers, "gemma-2-2b-it_responses.csv")
+        print(model_answers)
         
     
     

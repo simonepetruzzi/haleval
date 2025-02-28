@@ -26,7 +26,7 @@ class PopQADataset(Dataset):
         question = example["question"]
         
         # Sample 10 random examples for context
-        context_examples = random.sample(self.data_list, 10)
+        context_examples = random.sample(self.data_list, 7)
         example_texts = "\n\n".join(
             [
                 f"Example {i+1}:\nQuestion: {ex['question']}\nAnswer: {ex['possible_answers'].split(' | ')[0]}"
@@ -36,7 +36,7 @@ class PopQADataset(Dataset):
             ]
         )   
         
-        prompt = f"""Answer the following questions concisely and accurately, using no more than one sentence. Follow the format of the examples provided.
+        prompt = f"""Answer the last question (starts with: Now, answer the following:) concisely and accurately. In order to correctly respond follow the format of the examples provided:
         
 {example_texts}
 

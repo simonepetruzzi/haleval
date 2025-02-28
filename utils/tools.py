@@ -110,56 +110,52 @@ Answer:"""
             torch.cuda.empty_cache()  # Free up cached GPU memory
             print(f"Finished processing batch starting at index {batch_start} to {min(batch_start + batch_size_prompt, total_examples)-1}")
 
-def generate_text_batch(model,tokenizer,prompts, max_new_tokens, batch_size, device="cuda"):
-    generated_texts = []
-    for i in range(0, len(prompts), batch_size):
-        # Select a chunk of prompts for the current batch
-        batch_prompts = prompts[i:i+batch_size]
 
-        # Tokenize the batch with padding
-        inputs = tokenizer(batch_prompts, return_tensors="pt", padding=True).to(device)
+def generate_text_batch(model, tokenizer, prompts, max_length=30, device="cuda"):
+    # Properly tokenize and move tensors to device
+    inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
+    inputs = {k: v.to(device) for k, v in inputs.items()}  # Move tensors to device
 
-        generation_config = {
-            "max_new_tokens": max_new_tokens,
-            "temperature": 0.2,
-            "top_p": 0.9,
-            "do_sample": True,
-            "return_dict_in_generate": True,
-            "output_scores": True
-        }
+    generation_config = {
+        "max_new_tokens": max_length,
+        "temperature": 0,
+        "do_sample": False,
+        "return_dict_in_generate": True, 
+        "output_scores": False
+    }
 
-        output_sequences = model.generate(**inputs, **generation_config)
+    with torch.no_grad():
+        outputs = model.generate(**inputs, **generation_config)
 
-        # For each prompt in the batch, post-process the generated text
-        for j, prompt in enumerate(batch_prompts):
-            decoded = tokenizer.decode(output_sequences.sequences[j],
-                                       skip_special_tokens=True,
-                                       clean_up_tokenization_spaces=True)
-            # Use the last occurrence of "Answer:" as the marker
-            marker = "Answer:"
-            pos = decoded.rfind(marker)
-            if pos != -1:
-                answer = decoded[pos+len(marker):].strip()
-            else:
-                answer = decoded.strip()
-            generated_texts.append(answer)
-            
-    return generated_texts
+    # Ensure we extract only `sequences` from GenerateOutput
+    generated_sequences = outputs.sequences if hasattr(outputs, "sequences") else outputs
 
-# def save_answers_csv(metadata, model_answers, output):
-#     with open(output, "w", newline="", encoding="utf-8") as f:
-#         writer = csv.DictWriter(f, fieldnames=["idx", "question", "possible_answers", "model_response"])
-#         writer.writeheader()
-#         for idx, question, possible_answers, model_answer in zip(
-#             metadata["idx"], metadata["question"], metadata["possible_answers"], model_answers
-#         ):
-#             writer.writerow({
-#                 "idx": idx,
-#                 "question": question,
-#                 "possible_answers": possible_answers,
-#                 "model_response": model_answer
-#             })
-#     torch.cuda.empty_cache()    
+    # Decode the generated sequences
+    responses = tokenizer.batch_decode(generated_sequences, skip_special_tokens=True)
+
+    return responses
+    
+    
+
+def generate_text(model, tokenizer, prompt, max_length=30, device="cuda"):
+    
+    input_ids = tokenizer(prompt, return_tensors="pt", padding=True).to(device)
+
+    generation_config = {
+        "max_new_tokens": max_length,
+        "temperature": 0,
+        "do_sample": False,
+        "return_dict_in_generate": True,
+        "output_scores": False
+    }
+    output = model.generate(input_ids=input_ids, **generation_config)
+    # Extract the generated sequence from the dictionary
+    generated_text = tokenizer.decode(output["sequences"][0], skip_special_tokens=True)
+
+    return generated_text
+
+    
+    
 
 def save_answers_csv(metadata, model_answers, output):
     file_exists = os.path.exists(output)

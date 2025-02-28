@@ -2,6 +2,6 @@
 dataset_name: "popQA"
 split: "test"
 max_length: 512
-batch_size: 10
+batch_size: 50
 shuffle: false
 num_workers: 16
