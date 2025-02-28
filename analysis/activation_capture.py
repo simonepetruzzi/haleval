@@ -61,9 +61,8 @@ def main(cfg: DictConfig):
         metadata = batch["metadata"]
         model_answers = generate_text_batch(model, tokenizer, prompts, max_length=30) 
         save_answers_csv(metadata, model_answers, "gemma-2-2b-it_responses.csv")
-        print(model_answers)
         
-    
+        break
     
 if __name__ == '__main__':
     main()

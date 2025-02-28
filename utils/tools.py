@@ -112,28 +112,42 @@ Answer:"""
 
 
 def generate_text_batch(model, tokenizer, prompts, max_length=30, device="cuda"):
-    # Properly tokenize and move tensors to device
     inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True)
-    inputs = {k: v.to(device) for k, v in inputs.items()}  # Move tensors to device
-
+    input_ids = inputs["input_ids"]
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    
     generation_config = {
         "max_new_tokens": max_length,
         "temperature": 0,
         "do_sample": False,
-        "return_dict_in_generate": True, 
+        "return_dict_in_generate": True,
         "output_scores": False
     }
-
+    
     with torch.no_grad():
         outputs = model.generate(**inputs, **generation_config)
-
-    # Ensure we extract only `sequences` from GenerateOutput
+    
     generated_sequences = outputs.sequences if hasattr(outputs, "sequences") else outputs
-
-    # Decode the generated sequences
-    responses = tokenizer.batch_decode(generated_sequences, skip_special_tokens=True)
-
+    responses = []
+    
+    # Decode full generated sequences
+    full_texts = tokenizer.batch_decode(generated_sequences, skip_special_tokens=True)
+    
+    # For each prompt, remove its text from the full generated output.
+    for prompt, full_text in zip(prompts, full_texts):
+        # If the full text starts with the prompt, remove it
+        if full_text.startswith(prompt):
+            response = full_text[len(prompt):].strip()
+        else:
+            # Fallback if it doesn't match exactly: try to remove up to a known separator,
+            # for example, "Now, answer the following:" if your prompt always includes it.
+            response = full_text
+        responses.append(response)
+    
     return responses
+
+
+
     
     
 
