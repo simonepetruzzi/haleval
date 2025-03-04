@@ -12,31 +12,16 @@ def load_model(model_name: str,
                use_flash_attention: bool = False, 
                device: str = "cuda", 
                torch_dtype=torch.float16) -> (torch.nn.Module, AutoTokenizer):
-    """
-    Loads a Hugging Face language model and tokenizer, and optionally enables Flash Attention.
-    
-    Args:
-        model_name (str): The name or path of the pretrained model.
-        use_flash_attention (bool): Whether to enable flash attention if available.
-        device (str): The device to map the model to (e.g., 'cuda' or 'cpu').
-        torch_dtype: The torch data type to use (e.g., torch.float16 for FP16).
-    
-    Returns:
-        model (torch.nn.Module): The loaded language model.
-        tokenizer (AutoTokenizer): The corresponding tokenizer.
-    """
-   
     config = AutoConfig.from_pretrained(model_name)
-    
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
+    tokenizer.pad_token = tokenizer.eos_token
     
     model = AutoModelForCausalLM.from_pretrained(
         model_name, 
         config=config,
         torch_dtype=torch_dtype,
-        # device_map="auto"
     )
-
     model.to(device)
     
     if use_flash_attention:
@@ -47,6 +32,7 @@ def load_model(model_name: str,
             print("Flash Attention not supported for this model.")
     
     return model, tokenizer
+
 
 def generate_responses_for_popqa_batch(model, tokenizer, device, output_csv="gemma2b_popqa_responses.csv"):
     # Load the dataset and convert to a list for efficient sampling
