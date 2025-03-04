@@ -151,8 +151,8 @@ def evaluate_csv(
 
 
 if __name__ == "__main__":
-    input_file = "truthfulqa_responses.csv"
-    output_file = "truthfulqa_gemma_hallucinations.csv"
+    input_file = "gemma-2-2b-it_responses_cleaned<.csv"
+    output_file = "gemma-2-2b-it_responses_cleaned1.csv"
     
     evaluate_csv(input_file, output_file, append_mode=False)
 

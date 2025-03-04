@@ -52,6 +52,7 @@ def main(cfg: DictConfig):
         module_names.append(f"model.layers.{idx}.self_attn")
         module_names.append(f"model.layers.{idx}.mlp")
     
+    model.eval()
     # Process each batch: generate responses and capture/save activations
     for bid, batch in enumerate(dataloader):
         prompts = batch["prompt"]
@@ -81,7 +82,7 @@ def main(cfg: DictConfig):
                 torch.save(ac_last, hidden_save_dir / save_name)
     
     # After processing all batches, combine individual activation files into one tensor per layer.
-    combine_activations([model_name], data_name, activation_type=activation_type, layer_ids=list(range(num_layer)))
+    combine_activations(save_dir, target_layers=list(range(num_layer)) , activation_type=activation_type, analyse_activation_list=["mlp", "attn", "hidden"])
     
 if __name__ == '__main__':
     main()
