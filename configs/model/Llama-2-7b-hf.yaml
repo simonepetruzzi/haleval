@@ -1,0 +1,9 @@
+model_name: "meta-llama/Llama-2-7b-hf"
+use_flash_attention: True
+device: "cuda"
+torch_dtype: "float16" 
+layers: 32
+module_names:  
+  - attention
+  - mlp
+  - hidden
