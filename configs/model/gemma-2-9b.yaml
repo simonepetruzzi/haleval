@@ -1,9 +1,9 @@
 model_name: "google/gemma-2-9b"
 use_flash_attention: True
 device: "cuda"
-torch_dtype: "float16"  # You might need to convert this in code
+torch_dtype: "float16" 
 layers: 32
-module_names:  # Modules on which you want to capture activations (attention, mlp, hidden)
+module_names:  
   - attention
   - mlp
   - hidden
