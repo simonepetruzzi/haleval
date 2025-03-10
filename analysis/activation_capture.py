@@ -54,35 +54,36 @@ def main(cfg: DictConfig):
     
     model.eval()
     # Process each batch: generate responses and capture/save activations
-    for bid, batch in enumerate(dataloader):
-        prompts = batch["prompt"]
-        metadata = batch["metadata"]
+    with torch.no_grad():
+        for bid, batch in enumerate(dataloader):
+            prompts = batch["prompt"]
+            metadata = batch["metadata"]
+            
+            # Wrap the forward pass in the hook context to capture activations.
+            # The generation call (generate_text_batch) runs the forward pass.
+            with InspectOutput(model, module_names, move_to_cpu=True, last_position=True) as inspector:
+                model_answers = generate_text_batch(model, tokenizer, prompts, max_length=30)
+            
+            # Save generated responses (answers) to CSV
+            save_answers_csv(metadata, model_answers, model_name)
+            
+            # Iterate through the captured activations and save each to file.
+            # Each file is named with the layer and batch (example) id.
+            for module, ac in inspector.catcher.items():
+                # ac is expected to have shape [batch_size, hidden_dim]; since batch_size==1, we use ac[0]
+                ac_last = ac[0].float()
+                # Parse the layer index from the module name (assumes format "model.layers.{idx}...")
+                layer_idx = int(module.split(".")[2])
+                save_name = f"layer{layer_idx}-id{bid}.pt"
+                if "mlp" in module:
+                    torch.save(ac_last, mlp_save_dir / save_name)
+                elif "self_attn" in module:
+                    torch.save(ac_last, attn_save_dir / save_name)
+                else:
+                    torch.save(ac_last, hidden_save_dir / save_name)
         
-        # Wrap the forward pass in the hook context to capture activations.
-        # The generation call (generate_text_batch) runs the forward pass.
-        with InspectOutput(model, module_names, move_to_cpu=True, last_position=True) as inspector:
-            model_answers = generate_text_batch(model, tokenizer, prompts, max_length=30)
-        
-        # Save generated responses (answers) to CSV
-        save_answers_csv(metadata, model_answers, "gemma-2-2b-it_responses.csv")
-        
-        # Iterate through the captured activations and save each to file.
-        # Each file is named with the layer and batch (example) id.
-        for module, ac in inspector.catcher.items():
-            # ac is expected to have shape [batch_size, hidden_dim]; since batch_size==1, we use ac[0]
-            ac_last = ac[0].float()
-            # Parse the layer index from the module name (assumes format "model.layers.{idx}...")
-            layer_idx = int(module.split(".")[2])
-            save_name = f"layer{layer_idx}-id{bid}.pt"
-            if "mlp" in module:
-                torch.save(ac_last, mlp_save_dir / save_name)
-            elif "self_attn" in module:
-                torch.save(ac_last, attn_save_dir / save_name)
-            else:
-                torch.save(ac_last, hidden_save_dir / save_name)
-    
-    # After processing all batches, combine individual activation files into one tensor per layer.
-    combine_activations(save_dir, target_layers=list(range(num_layer)) , activation_type=activation_type, analyse_activation_list=["mlp", "attn", "hidden"])
+        # After processing all batches, combine individual activation files into one tensor per layer.
+        combine_activations(save_dir, target_layers=list(range(num_layer)) , activation_type=activation_type, analyse_activation_list=["mlp", "attn", "hidden"])
     
 if __name__ == '__main__':
     main()
