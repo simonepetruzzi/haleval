@@ -10,7 +10,7 @@ def main(csv_file_path, pt_file_path):
     df = pd.read_csv(csv_file_path)
     
     # Convert the "hallucinated" column to binary labels: 1 for "Yes" and 0 for "No"
-    df['label'] = df['hallucinated'].apply(lambda x: 1 if x.strip().lower() == 'yes' else 0)
+    df['label'] = df['hallucinated'].apply(lambda x: 1 if str(x).strip().lower() == 'yes' else 0)
     print("Number of samples in CSV:", len(df))
     
     # 2. Load the activation tensor from the .pt file for a specific layer
