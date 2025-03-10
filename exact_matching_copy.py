@@ -61,13 +61,13 @@ def evaluate_csv(
 ):
     """
     Reads a CSV file (input_file_path) with columns: 
-       [question, possible_answer, model_response].
-    - `possible_answer` is always in the form of a Python list string, e.g.:
+       [question, possible_answers, model_response].
+    - `possible_answers` is always in the form of a Python list string, e.g.:
          ["journalist","journo","journalists","playwright","dramatist","playwrite","scriptwriter","poet","poetess","bard"]
     Extracts entities from the model_response, normalizes them along with the possible_answer entities,
     and then checks for an exact match between any pair.
     Writes the results to an output CSV file (output_file_path) with columns:
-       [question, possible_answer, model_entities, hallucinated].
+       [question, possible_answers, model_entities, hallucinated].
     """
     
     mode = 'a' if append_mode else 'w'
@@ -76,7 +76,7 @@ def evaluate_csv(
          open(output_file_path, mode=mode, newline='', encoding='utf-8') as outfile:
 
         reader = csv.DictReader(infile)
-        fieldnames = ['question', 'possible_answer', 'model_entities', 'hallucinated']
+        fieldnames = ['question', 'possible_answers', 'model_entities', 'hallucinated']
         writer = csv.DictWriter(outfile, fieldnames=fieldnames)
 
         # Write header if not appending
@@ -88,7 +88,7 @@ def evaluate_csv(
             raw_model_response = row.get("model_response", "").strip()
             
             # Parse the possible_answer field as a Python list
-            possible_answer_field = row.get("possible_answer", "").strip()
+            possible_answer_field = row.get("possible_answers", "").strip()
             if possible_answer_field.startswith("[") and possible_answer_field.endswith("]"):
                 try:
                     possible_answers_list = [str(e).strip() for e in ast.literal_eval(possible_answer_field)]
@@ -111,7 +111,7 @@ def evaluate_csv(
 
             writer.writerow({
                 'question': question,
-                'possible_answer': "|".join(possible_answers_list),
+                'possible_answers': "|".join(possible_answers_list),
                 'model_entities': "|".join(extracted_entities),
                 'hallucinated': hallucinated
             })
