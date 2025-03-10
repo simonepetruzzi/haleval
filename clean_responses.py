@@ -1,9 +1,15 @@
 import pandas as pd
 import re
+import argparse
+
+# Set up argument parsing
+parser = argparse.ArgumentParser(description="Clean bracketed responses in a CSV file.")
+parser.add_argument("input_file", help="Path to the input CSV file")
+parser.add_argument("output_file", help="Path to save the cleaned CSV file")
+args = parser.parse_args()
 
 # Load the CSV file
-file_path = 'gemma-2-2b-it_responses.csv'
-df = pd.read_csv(file_path)
+df = pd.read_csv(args.input_file)
 
 # Define a function to extract text inside brackets and ensure closing bracket
 def clean_response(response):
@@ -19,7 +25,6 @@ column_name = 'model_response'  # Adjust if needed
 df[column_name] = df[column_name].astype(str).apply(clean_response)
 
 # Save the cleaned data back to a CSV file
-cleaned_file_path = 'gemma-2-2b-it_responses_cleaned.csv'
-df.to_csv(cleaned_file_path, index=False)
+df.to_csv(args.output_file, index=False)
 
-print(f'Cleaned CSV file saved to {cleaned_file_path}')
+print(f'Cleaned CSV file saved to {args.output_file}')
