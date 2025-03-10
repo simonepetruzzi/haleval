@@ -3,6 +3,7 @@ import csv
 import re
 import difflib
 import ast
+import argparse
 
 def normalize_text(s: str) -> str:
     # Strip text
@@ -109,7 +110,13 @@ def evaluate_csv(
     print(f"Evaluation complete. Results saved to {output_file_path}")
 
 if __name__ == "__main__":
-    input_file = "gemma-2-2b-it_responses_cleaned.csv"
-    output_file = "gemma-2-2b-it_responses_cleaned1.csv"
-    
-    evaluate_csv(input_file, output_file, append_mode=False)
+    # Set up argument parsing
+    parser = argparse.ArgumentParser(description="Evaluate a CSV file and save the output.")
+    parser.add_argument("input_file", help="Path to the input CSV file")
+    parser.add_argument("output_file", help="Path to save the evaluated CSV file")
+    parser.add_argument("--append", action="store_true", help="Enable append mode (default is overwrite)")
+
+    args = parser.parse_args()
+
+    # Call the evaluation function with dynamic file paths
+    evaluate_csv(args.input_file, args.output_file, append_mode=args.append)
