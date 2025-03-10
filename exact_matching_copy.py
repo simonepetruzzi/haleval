@@ -62,7 +62,8 @@ def evaluate_csv(
     """
     Reads a CSV file (input_file_path) with columns: 
        [question, possible_answer, model_response].
-    - `possible_answer` may contain multiple entities separated by the "|" character.
+    - `possible_answer` is always in the form of a Python list string, e.g.:
+         ["journalist","journo","journalists","playwright","dramatist","playwrite","scriptwriter","poet","poetess","bard"]
     Extracts entities from the model_response, normalizes them along with the possible_answer entities,
     and then checks for an exact match between any pair.
     Writes the results to an output CSV file (output_file_path) with columns:
@@ -85,8 +86,16 @@ def evaluate_csv(
         for row in reader:
             question = row.get("question", "").strip()
             raw_model_response = row.get("model_response", "").strip()
-            # Split the possible answers on "|" to get a list
-            possible_answers_list = row.get("possible_answer", "").strip().split("|")
+            
+            # Parse the possible_answer field as a Python list
+            possible_answer_field = row.get("possible_answer", "").strip()
+            if possible_answer_field.startswith("[") and possible_answer_field.endswith("]"):
+                try:
+                    possible_answers_list = [str(e).strip() for e in ast.literal_eval(possible_answer_field)]
+                except Exception:
+                    possible_answers_list = possible_answer_field.split("|")
+            else:
+                possible_answers_list = possible_answer_field.split("|")
             
             # Extract entities from the model response
             extracted_entities = extract_entities(raw_model_response)
