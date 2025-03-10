@@ -14,14 +14,14 @@ def main(csv_file_path, pt_file_path):
     print("Number of samples in CSV:", len(df))
     
     # 2. Load the activation tensor from the .pt file for a specific layer
-    activations = torch.load(pt_file_path)  # Expected shape: [14267, 3584]
+    activations = torch.load(pt_file_path)  
     print("Activation tensor shape:", activations.shape)
     
     # 3. Convert the activation tensor to a NumPy array for scikit-learn
-    X = activations.numpy()  # Feature matrix with shape: (14267, 3584)
+    X = activations.numpy()  
     
     # 4. Extract the label vector from the dataframe
-    y = df['label'].values  # Label vector with shape: (14267,)
+    y = df['label'].values  
     
     # Sanity check: Ensure the number of samples in X and y match
     assert X.shape[0] == y.shape[0], "Mismatch between number of activation samples and labels!"
