@@ -48,7 +48,7 @@ def inspect_hook(module: nn.Module, inputs, outputs, catcher: dict, module_name,
     '''
     if last_position:
         if type(outputs) is tuple:
-            catcher[module_name] = outputs[0][:, -2]  # .clone()
+            catcher[module_name] = outputs[0][:, -1]  # .clone()
         else:
             catcher[module_name] = outputs[:, -1]
         if move_to_cpu:

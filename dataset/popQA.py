@@ -68,14 +68,24 @@ Answer:"""
             return_tensors="pt"
         )
         
-        # Return both tokenized inputs and metadata
+        # Squeeze the tensors to remove extra batch dimension
+        input_ids = tokenized["input_ids"].squeeze()
+        attention_mask = tokenized["attention_mask"].squeeze()
+        
+        # Compute the length of the prompt (number of non-padding tokens)
+        prompt_length = attention_mask.sum().item()  # This is the count of real tokens
+        last_prompt_token_position = prompt_length - 1  # Index of the last real token
+        
+        # Return both tokenized inputs, the last token's position, and metadata
         return {
             "prompt": prompt, 
-            "input_ids": tokenized["input_ids"].squeeze(), 
-            "attention_mask": tokenized["attention_mask"].squeeze(),
+            "input_ids": input_ids, 
+            "attention_mask": attention_mask,
+            "prompt_last_token_position": last_prompt_token_position,
             "metadata": {
                 "idx": idx,
                 "question": question,
                 "possible_answers": possible_answers
             }
         }
+ 
