@@ -56,7 +56,7 @@ def train_mlp_model(X_train, y_train, X_test, y_test, input_dim, batch_size=32, 
             epoch_loss += loss.item() * X_batch.size(0)
         epoch_loss /= len(train_loader.dataset)
         # Uncomment the following line to print per-epoch loss
-        # print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}")
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}")
     
     # Evaluate on training data
     model.eval()
@@ -106,7 +106,10 @@ def evaluate_activation_files(csv_file_path, pt_files, batch_size=32, epochs=50,
         # Load activation tensor and convert to NumPy
         activations = torch.load(pt_file)
         X_np = activations.numpy()
-        
+
+        if X_np.ndim > 2:
+            X_np = X_np.reshape(X_np.shape[0], -1)
+
         # Check that the number of samples matches
         if X_np.shape[0] != len(y_np):
             raise ValueError(f"Mismatch between number of samples in {pt_file} and CSV!")
