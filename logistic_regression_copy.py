@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import f1_score  # Import f1_score
 
 # Define the MLP classifier with best practices (hidden layers, ReLU, dropout)
 class MLPClassifier(nn.Module):
-    def __init__(self, input_dim, hidden_dims=[64, 32], dropout_rate=0.5):
+    def __init__(self, input_dim, hidden_dims=[256, 128], dropout_rate=0.5):
         super(MLPClassifier, self).__init__()
         layers = []
         prev_dim = input_dim
@@ -28,9 +29,9 @@ class MLPClassifier(nn.Module):
     def forward(self, x):
         return self.network(x)
 
-def train_mlp_model(X_train, y_train, X_test, y_test, input_dim, batch_size=64, epochs=100, lr=0.001):
+def train_mlp_model(X_train, y_train, X_test, y_test, input_dim, batch_size=64, epochs=50, lr=0.001):
     """
-    Trains an MLP model on the provided training data and returns training and test accuracy.
+    Trains an MLP model and returns training and test accuracy along with their F1 scores.
     """
     # Create DataLoader objects for batching
     train_dataset = TensorDataset(X_train, y_train)
@@ -39,7 +40,7 @@ def train_mlp_model(X_train, y_train, X_test, y_test, input_dim, batch_size=64, 
     test_loader = DataLoader(test_dataset, batch_size=batch_size)
     
     # Initialize the model, loss function, and optimizer
-    model = MLPClassifier(input_dim)
+    model = MLPClassifier(input_dim).to('cuda')
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
@@ -48,6 +49,7 @@ def train_mlp_model(X_train, y_train, X_test, y_test, input_dim, batch_size=64, 
     for epoch in range(epochs):
         epoch_loss = 0.0
         for X_batch, y_batch in train_loader:
+            X_batch, y_batch = X_batch.to('cuda'), y_batch.to('cuda')
             optimizer.zero_grad()
             outputs = model(X_batch)
             loss = criterion(outputs, y_batch)
@@ -55,42 +57,58 @@ def train_mlp_model(X_train, y_train, X_test, y_test, input_dim, batch_size=64, 
             optimizer.step()
             epoch_loss += loss.item() * X_batch.size(0)
         epoch_loss /= len(train_loader.dataset)
-        # Uncomment the following line to print per-epoch loss
         print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}")
     
-    # Evaluate on training data
+    # Evaluation
     model.eval()
     with torch.no_grad():
+        # Evaluate on training data
         train_correct = 0
         train_total = 0
+        train_preds = []
+        train_labels = []
         for X_batch, y_batch in train_loader:
+            X_batch, y_batch = X_batch.to('cuda'), y_batch.to('cuda')
             outputs = model(X_batch)
             predictions = (torch.sigmoid(outputs) >= 0.5).float()
             train_correct += (predictions == y_batch).sum().item()
             train_total += y_batch.size(0)
+            train_preds.append(predictions.cpu())
+            train_labels.append(y_batch.cpu())
         train_accuracy = train_correct / train_total
+        train_preds = torch.cat(train_preds).numpy()
+        train_labels = torch.cat(train_labels).numpy()
+        train_f1 = f1_score(train_labels, train_preds)
         
         # Evaluate on test data
         test_correct = 0
         test_total = 0
+        test_preds = []
+        test_labels = []
         for X_batch, y_batch in test_loader:
+            X_batch, y_batch = X_batch.to('cuda'), y_batch.to('cuda')
             outputs = model(X_batch)
             predictions = (torch.sigmoid(outputs) >= 0.5).float()
             test_correct += (predictions == y_batch).sum().item()
             test_total += y_batch.size(0)
+            test_preds.append(predictions.cpu())
+            test_labels.append(y_batch.cpu())
         test_accuracy = test_correct / test_total
+        test_preds = torch.cat(test_preds).numpy()
+        test_labels = torch.cat(test_labels).numpy()
+        test_f1 = f1_score(test_labels, test_preds)
     
-    return train_accuracy, test_accuracy
+    return train_accuracy, test_accuracy, train_f1, test_f1
 
-def evaluate_activation_files(csv_file_path, pt_files, batch_size=64, epochs=10, lr=0.001):
+def evaluate_activation_files(csv_file_path, pt_files, batch_size=64, epochs=50, lr=0.001):
     """
-    For each activation file in pt_files:
+    For each activation file:
       - Loads activations and labels,
-      - Standardizes the features,
+      - Standardizes features,
       - Splits data into train and test sets,
       - Trains an MLP classifier,
-      - Records training and test accuracy.
-    Returns layer names and corresponding accuracies.
+      - Records training/test accuracy and F1 scores.
+    Returns layer names and corresponding metrics.
     """
     # Load CSV and convert hallucination labels to binary (1 for 'true', 0 otherwise)
     df = pd.read_csv(csv_file_path)
@@ -100,6 +118,8 @@ def evaluate_activation_files(csv_file_path, pt_files, batch_size=64, epochs=10,
     layers = []
     train_accuracies = []
     test_accuracies = []
+    train_f1_scores = []
+    test_f1_scores = []
     
     for pt_file in pt_files:
         print(f"Processing file: {pt_file}")
@@ -129,16 +149,20 @@ def evaluate_activation_files(csv_file_path, pt_files, batch_size=64, epochs=10,
         
         input_dim = X_train.shape[1]
         # Train the MLP model on the current activations
-        train_acc, test_acc = train_mlp_model(X_train, y_train, X_test, y_test, input_dim,
-                                                batch_size=batch_size, epochs=epochs, lr=lr)
+        train_acc, test_acc, train_f1, test_f1 = train_mlp_model(
+            X_train, y_train, X_test, y_test, input_dim,
+            batch_size=batch_size, epochs=epochs, lr=lr
+        )
         
         train_accuracies.append(train_acc)
         test_accuracies.append(test_acc)
+        train_f1_scores.append(train_f1)
+        test_f1_scores.append(test_f1)
         layer_name = os.path.basename(pt_file)
         layers.append(layer_name)
-        print(f"{layer_name} -> Train acc: {train_acc * 100:.2f}%, Test acc: {test_acc * 100:.2f}%")
+        print(f"{layer_name} -> Train acc: {train_acc * 100:.2f}%, Test acc: {test_acc * 100:.2f}% | Train F1: {train_f1:.2f}, Test F1: {test_f1:.2f}")
         
-    return layers, train_accuracies, test_accuracies
+    return layers, train_accuracies, test_accuracies, train_f1_scores, test_f1_scores
 
 def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern, batch_size=32, epochs=50, lr=0.001):
     # Get file lists for each category using glob patterns
@@ -154,9 +178,9 @@ def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern, batch_size=32
         raise ValueError("No Hidden pt files found!")
     
     # Evaluate activations for each category using the MLP classifier
-    mlp_layers, mlp_train_acc, mlp_test_acc = evaluate_activation_files(csv_file_path, mlp_files, batch_size, epochs, lr)
-    attn_layers, attn_train_acc, attn_test_acc = evaluate_activation_files(csv_file_path, attn_files, batch_size, epochs, lr)
-    hidden_layers, hidden_train_acc, hidden_test_acc = evaluate_activation_files(csv_file_path, hidden_files, batch_size, epochs, lr)
+    mlp_layers, mlp_train_acc, mlp_test_acc, mlp_train_f1, mlp_test_f1 = evaluate_activation_files(csv_file_path, mlp_files, batch_size, epochs, lr)
+    attn_layers, attn_train_acc, attn_test_acc, attn_train_f1, attn_test_f1 = evaluate_activation_files(csv_file_path, attn_files, batch_size, epochs, lr)
+    hidden_layers, hidden_train_acc, hidden_test_acc, hidden_train_f1, hidden_test_f1 = evaluate_activation_files(csv_file_path, hidden_files, batch_size, epochs, lr)
     
     # Plot Test Accuracy across layers for each activation category
     plt.figure(figsize=(12, 8))
@@ -176,7 +200,7 @@ def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern, batch_size=32
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
+    plt.savefig("plot.png")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

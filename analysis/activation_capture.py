@@ -8,19 +8,21 @@ from pathlib import Path
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from utils.tools import load_model, generate_text_batch, save_answers_csv
+from utils.tools import load_model, load_gemma3_model, generate_text_batch, save_answers_csv
 from dataset.popQA import PopQADataset
-from utils.patch_utils import InspectOutput  # your hook-based class
+from utils.patch_utils import InspectOutput, parse_layer_idx  # your hook-based class
 from utils.save_activations import combine_activations  
 
 @torch.inference_mode()
 @hydra.main(config_path="../configs", config_name="config")
 def main(cfg: DictConfig):
     # Load model and tokenizer
-    model, tokenizer = load_model(cfg.model.model_name,
-                                  use_flash_attention=cfg.model.use_flash_attention,
-                                  device=cfg.device)
+    if cfg.model.model_name == "google/gemma-3-27b-it":
+        model, tokenizer = load_gemma3_model(cfg.model.model_name, use_flash_attention=cfg.model.use_flash_attention, device=cfg.device)
     
+    else:
+        model, tokenizer = load_model(cfg.model.model_name, use_flash_attention=cfg.model.use_flash_attention, device=cfg.device)
+        
     # Load dataset and create dataloader
     if cfg.dataset.dataset_name == "popQA":
         dataset = PopQADataset(tokenizer, split=cfg.dataset.split, max_length=cfg.dataset.max_length)
@@ -46,11 +48,15 @@ def main(cfg: DictConfig):
     
     # Build list of module names to hook (for each target layer, add base, self-attn, and mlp
     num_layer = cfg.model.layers
+    if hasattr(model, "language_model"):
+        base = "language_model.model"
+    else:
+        base = "model"
     module_names = []
     for idx in range(num_layer):
-        module_names.append(f"model.layers.{idx}")
-        module_names.append(f"model.layers.{idx}.self_attn")
-        module_names.append(f"model.layers.{idx}.mlp")
+        module_names.append(f"{base}.layers.{idx}")
+        module_names.append(f"{base}.layers.{idx}.self_attn")
+        module_names.append(f"{base}.layers.{idx}.mlp")
     
     model.eval()
     # Process each batch: generate responses and capture/save activations
@@ -102,7 +108,7 @@ def main(cfg: DictConfig):
 
                 # For simplicity, if batch_size == 1, we use the first (and only) example.
                 # Otherwise, you might want to save each example separately.
-                layer_idx = int(module.split(".")[2])
+                layer_idx = parse_layer_idx(module)
                 save_name = f"layer{layer_idx}-id{bid}.pt"
                 if "mlp" in module:
                     torch.save(ac_full[0], mlp_save_dir / save_name)
