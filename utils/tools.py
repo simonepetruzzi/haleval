@@ -2,7 +2,7 @@ import os
 import json
 import torch
 import logging
-from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM , AutoProcessor, Gemma3ForConditionalGeneration
 from pathlib import Path
 from datasets import load_dataset
 import csv
@@ -12,10 +12,12 @@ def load_model(model_name: str,
                use_flash_attention: bool = False, 
                device: str = "cuda", 
                torch_dtype=torch.float16) -> (torch.nn.Module, AutoTokenizer):
+    
     config = AutoConfig.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    tokenizer.pad_token = tokenizer.eos_token
+    if model_name == "meta-llama/Llama-3.1-8B-Instruct" or model_name == "meta-llama/Llama-2-7b-hf":
+        tokenizer.pad_token = tokenizer.eos_token
     
     model = AutoModelForCausalLM.from_pretrained(
         model_name, 
@@ -30,6 +32,49 @@ def load_model(model_name: str,
             print("Flash Attention enabled.")
         else:
             print("Flash Attention not supported for this model.")
+    
+    return model, tokenizer
+
+def load_gemma3_model(model_name: str, 
+                      use_flash_attention: bool = False, 
+                      device: str = "cuda", 
+                      torch_dtype=torch.bfloat16,
+                      device_map: str = "auto") -> (torch.nn.Module, AutoProcessor):
+    """
+    Loads a Gemma3 model along with its processor.
+    
+    Parameters:
+        model_name (str): The model identifier (e.g., "google/gemma-3-27b-it").
+        use_flash_attention (bool): Whether to enable flash attention if available.
+        device (str): The target device for the model (e.g., "cuda" or "cpu").
+        torch_dtype: The torch data type to be used (default is torch.bfloat16).
+        device_map (str): The device mapping strategy (default "auto").
+    
+    Returns:
+        model (torch.nn.Module): The loaded Gemma3 model.
+        processor (AutoProcessor): The corresponding processor for the model.
+    """
+    
+    # Load the Gemma3 model with the specified device map and data type.
+    model = Gemma3ForConditionalGeneration.from_pretrained(
+        model_name, 
+        device_map=device_map,
+        torch_dtype=torch_dtype
+    ).eval()
+    
+    # Move the model to the specified device.
+    model.to(device)
+    
+    # Optionally enable flash attention if supported.
+    if use_flash_attention:
+        if hasattr(model, "enable_flash_attention"):
+            model.enable_flash_attention()
+            print("Flash Attention enabled.")
+        else:
+            print("Flash Attention not supported for this model.")
+    
+    # Load the processor for handling inputs.
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     
     return model, tokenizer
 

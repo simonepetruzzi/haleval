@@ -1,0 +1,9 @@
+model_name: "google/gemma-3-27b-it"
+use_flash_attention: True
+device: "cuda"
+torch_dtype: "torch.bfloat16" 
+layers: 62
+module_names:  
+  - attention
+  - mlp
+  - hidden
