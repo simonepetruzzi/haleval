@@ -2,7 +2,7 @@ import os
 import json
 import torch
 import logging
-from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM , AutoProcessor, Gemma3ForConditionalGeneration
+from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM , AutoProcessor, Gemma3ForConditionalGeneration, BitsAndBytesConfig
 from pathlib import Path
 from datasets import load_dataset
 import csv
@@ -16,15 +16,27 @@ def load_model(model_name: str,
     config = AutoConfig.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    if model_name == "meta-llama/Llama-3.1-8B-Instruct" or model_name == "meta-llama/Llama-2-7b-hf":
-        tokenizer.pad_token = tokenizer.eos_token
-    
-    model = AutoModelForCausalLM.from_pretrained(
+    if model_name == "meta-llama/Llama-3.3-70B-Instruct":
+        quantization_config = BitsAndBytesConfig(load_in_8bit=True, llm_int8_enable_fp32_cpu_offload=True)
+        model = AutoModelForCausalLM.from_pretrained(
         model_name, 
         config=config,
         torch_dtype=torch_dtype,
-    )
-    model.to(device)
+        device_map="auto",
+        quantization_config=quantization_config
+        )
+        
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+        model_name, 
+        config=config,
+        torch_dtype=torch_dtype,
+        device_map="auto"
+        )
+        model.to(device)
+        
+    if model_name == "meta-llama/Llama-3.1-8B-Instruct" or model_name == "meta-llama/Llama-2-7b-hf" or model_name == "meta-llama/Llama-3.3-70B-Instruct":
+        tokenizer.pad_token = tokenizer.eos_token
     
     if use_flash_attention:
         if hasattr(model, "enable_flash_attention"):

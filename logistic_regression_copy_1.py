@@ -15,7 +15,7 @@ import wandb  # Import wandb
 
 # Define the MLP classifier with best practices (hidden layers, ReLU, dropout)
 class MLPClassifier(nn.Module):
-    def __init__(self, input_dim, hidden_dims=[256, 128], dropout_rate=0.5):
+    def __init__(self, input_dim, hidden_dims=[64, 32, 16, 8], dropout_rate=0.5):
         super(MLPClassifier, self).__init__()
         layers = []
         prev_dim = input_dim
