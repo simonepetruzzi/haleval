@@ -26,7 +26,7 @@ class PopQADataset(Dataset):
         question = example["question"]
         
         # Sample 10 random examples for context
-        context_examples = random.sample(self.data_list, 7)
+        context_examples = random.sample(self.data_list, 3)
         example_texts = "\n\n".join(
             [
                 f"Example {i+1}:\nQuestion: {ex['question']}\nAnswer: {ex['possible_answers'].split(' | ')[0]}"

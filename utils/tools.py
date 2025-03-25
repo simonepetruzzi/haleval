@@ -35,7 +35,7 @@ def load_model(model_name: str,
         )
         model.to(device)
         
-    if model_name == "meta-llama/Llama-3.1-8B-Instruct" or model_name == "meta-llama/Llama-2-7b-hf" or model_name == "meta-llama/Llama-3.3-70B-Instruct":
+    if model_name == "meta-llama/Llama-3.1-8B-Instruct" or model_name == "meta-llama/Llama-3.1-8B" or model_name == "meta-llama/Llama-2-7b-hf" or model_name == "meta-llama/Llama-3.3-70B-Instruct":
         tokenizer.pad_token = tokenizer.eos_token
     
     if use_flash_attention:
