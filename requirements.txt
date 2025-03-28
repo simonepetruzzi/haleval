@@ -10,3 +10,4 @@ seaborn
 scikit-learn
 hydra-core
 sae_lens
+umap-learn
