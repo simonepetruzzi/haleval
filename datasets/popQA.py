@@ -25,7 +25,7 @@ class PopQAMultiChoiceDataset(Dataset):
         # Get the raw example
         example = self.data[idx]
 
-        # Assume the following keys exist; adjust if necessary.
+        
         question = example["question"]
         examples = random.sample(list(self.data), 10)
         example_texts = "\n\n".join(
