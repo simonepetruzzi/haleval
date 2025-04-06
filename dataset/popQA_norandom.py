@@ -36,13 +36,19 @@ class PopQADataset(Dataset):
             ]
         )
         
-        prompt = f"""Answer the last question (starts with: Now, answer the following:) concisely and accurately. In order to correctly respond follow the format of the examples provided:
-        
+        prompt = f"""Below are some examples that show the correct response format. Each example consists of a question followed by an answer that is a list of entities. Your task is to answer the final question by listing only the entities that directly answer the question. The answer must:
+
+• Include only the entities (no extra words or explanation).
+• Be enclosed in square brackets [ ].
+• List the entities separated by commas.
+
+Examples:
 {example_texts}
 
-Now, answer the following:
+Now, answer the following question following the same format:
 Question: {question}
-Answer:"""
+Answer:
+"""
         
         return prompt
 
