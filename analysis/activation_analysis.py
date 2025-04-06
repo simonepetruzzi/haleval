@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn as nn
 from sae_lens import SAE
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -8,21 +9,27 @@ from umap import UMAP
 
 # Load SAE and move it to CUDA
 sae, cfg_dict, sparsity = SAE.from_pretrained(
-    release="gemma-scope-2b-pt-att-canonical",
-    sae_id="layer_13/width_16k/canonical",
+    release="llama_scope_lxm_8x",
+    sae_id="l10m_8x",
 )
 print(sae.cfg)
 sae.eval()
 sae = sae.to('cuda')  
 
 # Load activations
-activations_path = "../false_activations_layer13_attention.pt"
-activations = torch.load(activations_path)
+activations_path = "../false_activations_layer13_mlp.pt"
+activations = torch.load(activations_path).to('cuda')
+# use to project gemma activations to 4096
+# project_4096 = nn.Linear(3584, 4096).to('cuda')
+# project_4096.eval()
+
 print("Activations shape:", activations.shape) 
 
 with torch.no_grad():
-    # Restrict to first 2048 dimensions to match SAE input dim
-    activations = activations[:, :2048].to('cuda')
+    # if you want to restrict to first 2048 dimensions to match SAE input dim
+    #activations = activations[:, :2048]
+    # If you want to project to 4096, uncomment the following line
+    #activations = project_4096(activations)
     latent_representations = []
     for i in range(activations.shape[0]):
         single_activation = activations[i].unsqueeze(0)  # Shape: [1, 2048]

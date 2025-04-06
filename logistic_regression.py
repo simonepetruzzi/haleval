@@ -156,8 +156,7 @@ def evaluate_activation_files(csv_file_path, pt_files, category, batch_size=64, 
         if X_np.ndim > 2:
             X_np = X_np.reshape(X_np.shape[0], -1)
         
-        # (Optional) Check that the flattened dimension is as expected, e.g. 2048.
-        expected_dim = 2304
+        expected_dim = 4096
         if X_np.shape[1] != expected_dim:
             raise ValueError(f"Expected activation dimension {expected_dim}, but got {X_np.shape[1]} in file {pt_file}!")
         
@@ -228,7 +227,7 @@ def evaluate_activation_files(csv_file_path, pt_files, category, batch_size=64, 
     return layers, train_accuracies, test_accuracies, train_f1_scores, test_f1_scores, true_activations_all
 
 
-def process_single_activation_file(csv_file_path, pt_file, expected_dim=2304):
+def process_single_activation_file(csv_file_path, pt_file, expected_dim=4096):
     """
     Loads the activations from a single file (expected to be from layer 13),
     applies dataset balancing (undersampling) based on the CSV labels,
@@ -306,7 +305,7 @@ def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern):
     if mlp_file is None:
         raise ValueError("No layer 13 file found for MLP.")
     wandb.init(project="haleval", name=f"{model}_mlp")
-    mlp_true_acts, mlp_false_acts = process_single_activation_file(csv_file_path, mlp_file, expected_dim=2304)
+    mlp_true_acts, mlp_false_acts = process_single_activation_file(csv_file_path, mlp_file, expected_dim=4096)
     wandb.finish()
     mlp_true_output_file = "true_activations_layer13_mlp.pt"
     mlp_false_output_file = "false_activations_layer13_mlp.pt"
@@ -321,7 +320,7 @@ def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern):
     if attn_file is None:
         raise ValueError("No layer 13 file found for Attention.")
     wandb.init(project="haleval", name=f"{model}_attention")
-    attn_true_acts, attn_false_acts = process_single_activation_file(csv_file_path, attn_file, expected_dim=2304)
+    attn_true_acts, attn_false_acts = process_single_activation_file(csv_file_path, attn_file, expected_dim=4096)
     wandb.finish()
     attn_true_output_file = "true_activations_layer13_attention.pt"
     attn_false_output_file = "false_activations_layer13_attention.pt"
@@ -336,7 +335,7 @@ def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern):
     if hidden_file is None:
         raise ValueError("No layer 13 file found for Hidden.")
     wandb.init(project="haleval", name=f"{model}_hidden")
-    hidden_true_acts, hidden_false_acts = process_single_activation_file(csv_file_path, hidden_file, expected_dim=2304)
+    hidden_true_acts, hidden_false_acts = process_single_activation_file(csv_file_path, hidden_file, expected_dim=4096)
     wandb.finish()
     hidden_true_output_file = "true_activations_layer13_hidden.pt"
     hidden_false_output_file = "false_activations_layer13_hidden.pt"
@@ -351,11 +350,11 @@ if __name__ == '__main__':
     )
     parser.add_argument('--csv_file_path', type=str, required=True,
                         help='Path to the CSV file with queries and hallucinated labels.')
-    parser.add_argument('--mlp_pattern', type=str, required=True,
+    parser.add_argument('--mlp_pattern', type=str, required=False,
                         help='Glob pattern for MLP pt files (e.g., "./mlp/layer*.pt").')
-    parser.add_argument('--attn_pattern', type=str, required=True,
+    parser.add_argument('--attn_pattern', type=str, required=False,
                         help='Glob pattern for Attention pt files (e.g., "./attention/layer*.pt").')
-    parser.add_argument('--hidden_pattern', type=str, required=True,
+    parser.add_argument('--hidden_pattern', type=str, required=False,
                         help='Glob pattern for Hidden pt files (e.g., "./hidden/layer*.pt").')
     
     args = parser.parse_args()
