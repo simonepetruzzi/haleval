@@ -102,7 +102,7 @@ def train_mlp_model(X_train, y_train, X_test, y_test, input_dim, batch_size=64, 
     
     return train_accuracy, test_accuracy, train_f1, test_f1
 
-def evaluate_activation_files(csv_file_path, pt_files, category, batch_size=64, epochs=50, lr=0.001):
+def evaluate_activation_files(csv_file_path, pt_files, category, expected_dim, batch_size=64, epochs=50, lr=0.001):
     """
     For each activation file:
       - Loads activations and labels from the CSV,
@@ -156,7 +156,6 @@ def evaluate_activation_files(csv_file_path, pt_files, category, batch_size=64, 
         if X_np.ndim > 2:
             X_np = X_np.reshape(X_np.shape[0], -1)
         
-        expected_dim = 4096
         if X_np.shape[1] != expected_dim:
             raise ValueError(f"Expected activation dimension {expected_dim}, but got {X_np.shape[1]} in file {pt_file}!")
         
@@ -226,10 +225,9 @@ def evaluate_activation_files(csv_file_path, pt_files, category, batch_size=64, 
     
     return layers, train_accuracies, test_accuracies, train_f1_scores, test_f1_scores, true_activations_all
 
-
-def process_single_activation_file(csv_file_path, pt_file, expected_dim=4096):
+def process_single_activation_file(csv_file_path, pt_file, expected_dim):
     """
-    Loads the activations from a single file (expected to be from layer 13),
+    Loads the activations from a single file (expected to be from the selected layer),
     applies dataset balancing (undersampling) based on the CSV labels,
     and extracts both hallucinated (true) and non-hallucinated (false) activations.
     
@@ -294,21 +292,21 @@ def extract_model_name_from_pattern(pattern):
             return parts[idx + 1]
     return None
 
-def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern):
-    # For each category, we assume the glob pattern returns at least one file.
-    # And we process the first file that includes "layer13" in its name.
+def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern, layer, expected_dim):
+    # Build the dynamic layer string (e.g., "layer13")
+    layer_str = f"layer{layer}"
     model = extract_model_name_from_pattern(mlp_pattern)
 
     # Process MLP
     mlp_files = sorted(glob.glob(mlp_pattern))
-    mlp_file = next((f for f in mlp_files if "layer13" in os.path.basename(f)), None)
+    mlp_file = next((f for f in mlp_files if layer_str in os.path.basename(f)), None)
     if mlp_file is None:
-        raise ValueError("No layer 13 file found for MLP.")
+        raise ValueError(f"No {layer_str} file found for MLP.")
     wandb.init(project="haleval", name=f"{model}_mlp")
-    mlp_true_acts, mlp_false_acts = process_single_activation_file(csv_file_path, mlp_file, expected_dim=4096)
+    mlp_true_acts, mlp_false_acts = process_single_activation_file(csv_file_path, mlp_file, expected_dim=expected_dim)
     wandb.finish()
-    mlp_true_output_file = "true_activations_layer13_mlp.pt"
-    mlp_false_output_file = "false_activations_layer13_mlp.pt"
+    mlp_true_output_file = f"true_activations_{layer_str}_mlp.pt"
+    mlp_false_output_file = f"false_activations_{layer_str}_mlp.pt"
     torch.save(mlp_true_acts, mlp_true_output_file)
     torch.save(mlp_false_acts, mlp_false_output_file)
     print(f"Saved MLP hallucinated activations: {mlp_true_acts.shape} to '{mlp_true_output_file}'")
@@ -316,14 +314,14 @@ def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern):
     
     # Process Attention
     attn_files = sorted(glob.glob(attn_pattern))
-    attn_file = next((f for f in attn_files if "layer13" in os.path.basename(f)), None)
+    attn_file = next((f for f in attn_files if layer_str in os.path.basename(f)), None)
     if attn_file is None:
-        raise ValueError("No layer 13 file found for Attention.")
+        raise ValueError(f"No {layer_str} file found for Attention.")
     wandb.init(project="haleval", name=f"{model}_attention")
-    attn_true_acts, attn_false_acts = process_single_activation_file(csv_file_path, attn_file, expected_dim=4096)
+    attn_true_acts, attn_false_acts = process_single_activation_file(csv_file_path, attn_file, expected_dim=expected_dim)
     wandb.finish()
-    attn_true_output_file = "true_activations_layer13_attention.pt"
-    attn_false_output_file = "false_activations_layer13_attention.pt"
+    attn_true_output_file = f"true_activations_{layer_str}_attention.pt"
+    attn_false_output_file = f"false_activations_{layer_str}_attention.pt"
     torch.save(attn_true_acts, attn_true_output_file)
     torch.save(attn_false_acts, attn_false_output_file)
     print(f"Saved Attention hallucinated activations: {attn_true_acts.shape} to '{attn_true_output_file}'")
@@ -331,14 +329,14 @@ def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern):
     
     # Process Hidden
     hidden_files = sorted(glob.glob(hidden_pattern))
-    hidden_file = next((f for f in hidden_files if "layer13" in os.path.basename(f)), None)
+    hidden_file = next((f for f in hidden_files if layer_str in os.path.basename(f)), None)
     if hidden_file is None:
-        raise ValueError("No layer 13 file found for Hidden.")
+        raise ValueError(f"No {layer_str} file found for Hidden.")
     wandb.init(project="haleval", name=f"{model}_hidden")
-    hidden_true_acts, hidden_false_acts = process_single_activation_file(csv_file_path, hidden_file, expected_dim=4096)
+    hidden_true_acts, hidden_false_acts = process_single_activation_file(csv_file_path, hidden_file, expected_dim=expected_dim)
     wandb.finish()
-    hidden_true_output_file = "true_activations_layer13_hidden.pt"
-    hidden_false_output_file = "false_activations_layer13_hidden.pt"
+    hidden_true_output_file = f"true_activations_{layer_str}_hidden.pt"
+    hidden_false_output_file = f"false_activations_{layer_str}_hidden.pt"
     torch.save(hidden_true_acts, hidden_true_output_file)
     torch.save(hidden_false_acts, hidden_false_output_file)
     print(f"Saved Hidden hallucinated activations: {hidden_true_acts.shape} to '{hidden_true_output_file}'")
@@ -346,7 +344,7 @@ def main(csv_file_path, mlp_pattern, attn_pattern, hidden_pattern):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description="Extract and save hallucinated layer 13 activations for MLP, Attention, and Hidden categories."
+        description="Extract and save hallucinated activations for a selected layer for MLP, Attention, and Hidden categories."
     )
     parser.add_argument('--csv_file_path', type=str, required=True,
                         help='Path to the CSV file with queries and hallucinated labels.')
@@ -356,6 +354,10 @@ if __name__ == '__main__':
                         help='Glob pattern for Attention pt files (e.g., "./attention/layer*.pt").')
     parser.add_argument('--hidden_pattern', type=str, required=False,
                         help='Glob pattern for Hidden pt files (e.g., "./hidden/layer*.pt").')
+    parser.add_argument('--layer', type=int, default=13,
+                        help='The layer number to extract activations from (default: 13).')
+    parser.add_argument('--expected_dim', type=int, default=4096,
+                        help='The expected dimension of the activation vectors (default: 4096).')
     
     args = parser.parse_args()
-    main(args.csv_file_path, args.mlp_pattern, args.attn_pattern, args.hidden_pattern)
+    main(args.csv_file_path, args.mlp_pattern, args.attn_pattern, args.hidden_pattern, args.layer, args.expected_dim)
